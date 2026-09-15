@@ -9,11 +9,7 @@
 
 namespace graphflow::core {
 
-/**
- * @brief High-performance 64-bit word-aligned Dynamic Bitset.
- * Optimized for word-level SIMD-like operations and fast iteration over set bits
- * via hardware CTZ (count trailing zeros) intrinsics (std::countr_zero).
- */
+// 64-bit word-aligned bitset with CTZ set-bit iteration.
 class DynamicBitset {
 public:
     using WordType = uint64_t;

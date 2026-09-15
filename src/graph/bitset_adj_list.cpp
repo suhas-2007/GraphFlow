@@ -3,6 +3,7 @@
 #include <algorithm>
 
 using namespace std;
+using namespace graphflow::core;
 
 namespace graphflow::graph {
 
@@ -18,7 +19,7 @@ void BitsetAdjacencyList::resize(size_t num_nodes) {
     bitmask_filters_.resize(num_nodes, 0);
 }
 
-void BitsetAdjacencyList::add_edge(core::NodeId u, core::NodeId v, float weight) {
+void BitsetAdjacencyList::add_edge(NodeId u, NodeId v, float weight) {
     if (u >= num_nodes_ || v >= num_nodes_) {
         resize(max(u, v) + 1);
     }
@@ -28,7 +29,7 @@ void BitsetAdjacencyList::add_edge(core::NodeId u, core::NodeId v, float weight)
     num_edges_++;
 }
 
-float BitsetAdjacencyList::get_weight(core::NodeId u, core::NodeId v, float default_val) const noexcept {
+float BitsetAdjacencyList::get_weight(NodeId u, NodeId v, float default_val) const noexcept {
     if (u >= num_nodes_) return default_val;
     if ((bitmask_filters_[u] & (uint64_t{1} << (v & 63))) == 0) {
         return default_val;
@@ -39,10 +40,9 @@ float BitsetAdjacencyList::get_weight(core::NodeId u, core::NodeId v, float defa
     return default_val;
 }
 
-size_t BitsetAdjacencyList::common_neighbors(core::NodeId u, core::NodeId v) const {
+size_t BitsetAdjacencyList::common_neighbors(NodeId u, NodeId v) const {
     if (u >= num_nodes_ || v >= num_nodes_) return 0;
 
-    // Fast check: zero overlap in bitmasks means no common neighbors exist
     uint64_t common_mask = bitmask_filters_[u] & bitmask_filters_[v];
     if (common_mask == 0) return 0;
 

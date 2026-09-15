@@ -4,6 +4,7 @@
 #include <optional>
 
 using namespace std;
+using namespace graphflow::core;
 
 namespace graphflow::graph {
 
@@ -22,7 +23,7 @@ void DynamicGraph::clear() {
     num_edges_ = 0;
 }
 
-void DynamicGraph::add_edge(core::NodeId u, core::NodeId v, core::EdgeWeight weight) {
+void DynamicGraph::add_edge(NodeId u, NodeId v, EdgeWeight weight) {
     if (u >= num_nodes_ || v >= num_nodes_) {
         resize(max(u, v) + 1);
     }
@@ -35,11 +36,11 @@ void DynamicGraph::add_edge(core::NodeId u, core::NodeId v, core::EdgeWeight wei
     }
 }
 
-bool DynamicGraph::remove_edge(core::NodeId u, core::NodeId v) {
+bool DynamicGraph::remove_edge(NodeId u, NodeId v) {
     if (u >= num_nodes_) return false;
 
     auto& edges = adj_[u];
-    auto it = find_if(edges.begin(), edges.end(), [v](const core::Edge& e) {
+    auto it = find_if(edges.begin(), edges.end(), [v](const Edge& e) {
         return e.target == v;
     });
 
@@ -48,7 +49,7 @@ bool DynamicGraph::remove_edge(core::NodeId u, core::NodeId v) {
         num_edges_--;
         if (!directed_ && v < num_nodes_) {
             auto& rev_edges = adj_[v];
-            auto rev_it = find_if(rev_edges.begin(), rev_edges.end(), [u](const core::Edge& e) {
+            auto rev_it = find_if(rev_edges.begin(), rev_edges.end(), [u](const Edge& e) {
                 return e.target == u;
             });
             if (rev_it != rev_edges.end()) {
@@ -60,7 +61,7 @@ bool DynamicGraph::remove_edge(core::NodeId u, core::NodeId v) {
     return false;
 }
 
-void DynamicGraph::update_edge_weight(core::NodeId u, core::NodeId v, core::EdgeWeight new_weight) {
+void DynamicGraph::update_edge_weight(NodeId u, NodeId v, EdgeWeight new_weight) {
     if (u >= num_nodes_) return;
 
     for (auto& e : adj_[u]) {
@@ -79,7 +80,7 @@ void DynamicGraph::update_edge_weight(core::NodeId u, core::NodeId v, core::Edge
     }
 }
 
-void DynamicGraph::add_flow_edge(core::NodeId u, core::NodeId v, core::FlowType capacity, core::CostType cost) {
+void DynamicGraph::add_flow_edge(NodeId u, NodeId v, FlowType capacity, CostType cost) {
     if (u >= num_nodes_ || v >= num_nodes_) {
         resize(max(u, v) + 1);
     }
@@ -87,8 +88,7 @@ void DynamicGraph::add_flow_edge(core::NodeId u, core::NodeId v, core::FlowType 
     uint32_t a_idx = static_cast<uint32_t>(flow_adj_[u].size());
     uint32_t b_idx = static_cast<uint32_t>(flow_adj_[v].size());
 
-    // Forward edge
-    flow_adj_[u].push_back(core::FlowEdge{
+    flow_adj_[u].push_back(FlowEdge{
         .to = v,
         .capacity = capacity,
         .flow = 0,
@@ -96,8 +96,7 @@ void DynamicGraph::add_flow_edge(core::NodeId u, core::NodeId v, core::FlowType 
         .rev = b_idx
     });
 
-    // Residual back-edge (0 initial capacity, inverted cost)
-    flow_adj_[v].push_back(core::FlowEdge{
+    flow_adj_[v].push_back(FlowEdge{
         .to = u,
         .capacity = 0,
         .flow = 0,
@@ -106,7 +105,7 @@ void DynamicGraph::add_flow_edge(core::NodeId u, core::NodeId v, core::FlowType 
     });
 }
 
-bool DynamicGraph::has_edge(core::NodeId u, core::NodeId v) const noexcept {
+bool DynamicGraph::has_edge(NodeId u, NodeId v) const noexcept {
     if (u >= num_nodes_) return false;
     for (const auto& e : adj_[u]) {
         if (e.target == v) return true;
@@ -114,7 +113,7 @@ bool DynamicGraph::has_edge(core::NodeId u, core::NodeId v) const noexcept {
     return false;
 }
 
-optional<core::EdgeWeight> DynamicGraph::get_edge_weight(core::NodeId u, core::NodeId v) const noexcept {
+optional<EdgeWeight> DynamicGraph::get_edge_weight(NodeId u, NodeId v) const noexcept {
     if (u >= num_nodes_) return nullopt;
     for (const auto& e : adj_[u]) {
         if (e.target == v) return e.weight;

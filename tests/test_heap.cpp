@@ -26,17 +26,10 @@ void test_heap_basic() {
     assert(heap.top().key == 4);
     assert(heap.top().priority == 1.0);
 
-    auto e1 = heap.pop();
-    assert(e1.key == 4);
-
-    auto e2 = heap.pop();
-    assert(e2.key == 2);
-
-    auto e3 = heap.pop();
-    assert(e3.key == 1);
-
-    auto e4 = heap.pop();
-    assert(e4.key == 3);
+    assert(heap.pop().key == 4);
+    assert(heap.pop().key == 2);
+    assert(heap.pop().key == 1);
+    assert(heap.pop().key == 3);
 
     assert(heap.empty());
     cout << "test_heap_basic passed\n";
@@ -50,19 +43,16 @@ void test_decrease_key() {
 
     assert(heap.top().key == 2);
 
-    // Decrease key of node 1 from 50 to 10 -> becomes new root
     heap.push_or_decrease_key(1, 10.0);
     assert(heap.top().key == 1);
     assert(heap.top().priority == 10.0);
 
-    // Decrease node 3 to 5.0 -> becomes new root
     heap.push_or_decrease_key(3, 5.0);
     assert(heap.top().key == 3);
     assert(heap.top().priority == 5.0);
 
     auto top = heap.pop();
-    assert(top.key == 3);
-    assert(top.priority == 5.0);
+    assert(top.key == 3 && top.priority == 5.0);
 
     top = heap.pop();
     assert(top.key == 1);

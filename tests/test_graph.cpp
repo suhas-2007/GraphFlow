@@ -5,10 +5,11 @@
 #include <cassert>
 
 using namespace std;
-using namespace graphflow;
+using namespace graphflow::core;
+using namespace graphflow::graph;
 
 void test_dynamic_graph_mutations() {
-    graph::DynamicGraph g(5, true);
+    DynamicGraph g(5, true);
     g.add_edge(0, 1, 10.0);
     g.add_edge(0, 2, 20.0);
     g.add_edge(1, 3, 30.0);
@@ -34,7 +35,7 @@ void test_dynamic_graph_mutations() {
 }
 
 void test_csr_conversion() {
-    graph::DynamicGraph g(4, true);
+    DynamicGraph g(4, true);
     g.add_edge(0, 1, 5.0);
     g.add_edge(0, 2, 6.0);
     g.add_edge(1, 2, 7.0);
@@ -56,7 +57,7 @@ void test_csr_conversion() {
 }
 
 void test_bitset_adjacency() {
-    graph::BitsetAdjacencyList bg(10);
+    BitsetAdjacencyList bg(10);
     bg.add_edge(0, 1, 1.0f);
     bg.add_edge(0, 2, 2.0f);
     bg.add_edge(3, 1, 3.0f);
@@ -68,7 +69,6 @@ void test_bitset_adjacency() {
     assert(!bg.has_edge(0, 3));
     assert(!bg.has_edge(1, 0));
 
-    // Common neighbors between 0 and 3 are 1 and 2
     size_t cn = bg.common_neighbors(0, 3);
     assert(cn == 2);
 

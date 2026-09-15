@@ -6,23 +6,24 @@
 #include <cmath>
 
 using namespace std;
-using namespace graphflow;
+using namespace graphflow::core;
+using namespace graphflow::graph;
+using namespace graphflow::algorithms;
 
 void test_dijkstra_equivalency() {
-    graph::DynamicGraph g(5, true);
+    DynamicGraph g(5, true);
     g.add_edge(0, 1, 4.0);
     g.add_edge(0, 2, 2.0);
-    g.add_edge(2, 1, 1.0); // 0 -> 2 -> 1 dist = 3.0 (< 4.0)
+    g.add_edge(2, 1, 1.0);
     g.add_edge(1, 3, 5.0);
     g.add_edge(2, 3, 8.0);
     g.add_edge(3, 4, 2.0);
     g.add_edge(2, 4, 10.0);
 
-    auto res_std = algorithms::ShortestPath::dijkstra_std(g, 0, 4);
-    auto res_4ary = algorithms::ShortestPath::dijkstra_indexed_4ary(g, 0, 4);
-    auto res_bidi = algorithms::ShortestPath::bidirectional_dijkstra(g, 0, 4);
+    auto res_std = ShortestPath::dijkstra_std(g, 0, 4);
+    auto res_4ary = ShortestPath::dijkstra_indexed_4ary(g, 0, 4);
+    auto res_bidi = ShortestPath::bidirectional_dijkstra(g, 0, 4);
 
-    // Shortest path: 0 -> 2 -> 1 -> 3 -> 4, distance = 2 + 1 + 5 + 2 = 10.0
     assert(abs(res_std.distance - 10.0) < 1e-6);
     assert(abs(res_4ary.distance - 10.0) < 1e-6);
     assert(abs(res_bidi.distance - 10.0) < 1e-6);
@@ -40,12 +41,12 @@ void test_dijkstra_equivalency() {
 void test_a_star_grid() {
     size_t width = 10;
     size_t height = 10;
-    auto grid = graph::GraphGenerator::generate_grid_graph(width, height, 1.0, 1.0, 42);
+    auto grid = GraphGenerator::generate_grid_graph(width, height, 1.0, 1.0, 42);
 
-    core::NodeId start = 0;
-    core::NodeId target = static_cast<core::NodeId>(width * height - 1);
+    NodeId start = 0;
+    NodeId target = static_cast<NodeId>(width * height - 1);
 
-    auto manhattan_heuristic = [width](core::NodeId u, core::NodeId v) -> core::EdgeWeight {
+    auto manhattan_heuristic = [width](NodeId u, NodeId v) -> EdgeWeight {
         int ux = u % width;
         int uy = u / width;
         int vx = v % width;
@@ -53,8 +54,8 @@ void test_a_star_grid() {
         return abs(ux - vx) + abs(uy - vy);
     };
 
-    auto dijkstra_res = algorithms::ShortestPath::dijkstra_indexed_4ary(grid, start, target);
-    auto astar_res = algorithms::ShortestPath::a_star(grid, start, target, manhattan_heuristic);
+    auto dijkstra_res = ShortestPath::dijkstra_indexed_4ary(grid, start, target);
+    auto astar_res = ShortestPath::a_star(grid, start, target, manhattan_heuristic);
 
     assert(abs(dijkstra_res.distance - astar_res.distance) < 1e-6);
     assert(astar_res.nodes_visited <= dijkstra_res.nodes_visited);

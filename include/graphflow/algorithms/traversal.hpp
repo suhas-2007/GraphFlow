@@ -2,34 +2,31 @@
 
 #include <vector>
 #include <queue>
-#include <stack>
-#include <functional>
+#include <limits>
+#include <utility>
 #include "graphflow/core/types.hpp"
 #include "graphflow/core/bitset.hpp"
 #include "graphflow/graph/graph.hpp"
 
 namespace graphflow::algorithms {
 
-/**
- * @brief High-performance Graph Traversals and Bit-Parallel Search.
- */
+using namespace core;
+using graph::DynamicGraph;
+
 class Traversal {
 public:
-    /**
-     * @brief Standard Breadth-First Search visitor.
-     */
     template <typename Visitor>
-    static void bfs(const graph::DynamicGraph& g, core::NodeId start, Visitor&& visitor) {
+    static void bfs(const DynamicGraph& g, NodeId start, Visitor&& visitor) {
         if (start >= g.num_nodes()) return;
 
-        core::DynamicBitset visited(g.num_nodes(), false);
-        std::queue<core::NodeId> q;
+        DynamicBitset visited(g.num_nodes(), false);
+        std::queue<NodeId> q;
 
         visited.set(start);
         q.push(start);
 
         while (!q.empty()) {
-            core::NodeId u = q.front();
+            NodeId u = q.front();
             q.pop();
 
             visitor(u);
@@ -43,19 +40,15 @@ public:
         }
     }
 
-    /**
-     * @brief High-throughput Multi-Source Bit-Parallel BFS.
-     * Computes reachability from a set of source nodes concurrently using bitset frontiers.
-     */
-    static core::DynamicBitset multi_source_bfs(
-        const graph::DynamicGraph& g,
-        const std::vector<core::NodeId>& sources,
+    static DynamicBitset multi_source_bfs(
+        const DynamicGraph& g,
+        const std::vector<NodeId>& sources,
         size_t max_depth = std::numeric_limits<size_t>::max()
     ) {
-        core::DynamicBitset visited(g.num_nodes(), false);
-        core::DynamicBitset frontier(g.num_nodes(), false);
+        DynamicBitset visited(g.num_nodes(), false);
+        DynamicBitset frontier(g.num_nodes(), false);
 
-        for (core::NodeId s : sources) {
+        for (NodeId s : sources) {
             if (s < g.num_nodes()) {
                 visited.set(s);
                 frontier.set(s);
@@ -64,10 +57,10 @@ public:
 
         size_t depth = 0;
         while (!frontier.none() && depth < max_depth) {
-            core::DynamicBitset next_frontier(g.num_nodes(), false);
+            DynamicBitset next_frontier(g.num_nodes(), false);
 
             frontier.for_each_set_bit([&](size_t u) {
-                for (const auto& edge : g.out_edges(static_cast<core::NodeId>(u))) {
+                for (const auto& edge : g.out_edges(static_cast<NodeId>(u))) {
                     if (!visited.test(edge.target)) {
                         visited.set(edge.target);
                         next_frontier.set(edge.target);
@@ -82,34 +75,30 @@ public:
         return visited;
     }
 
-    /**
-     * @brief Kahn's algorithm for topological sorting of DAGs.
-     * Returns empty vector if a cycle exists.
-     */
-    static std::vector<core::NodeId> topological_sort(const graph::DynamicGraph& g) {
+    static std::vector<NodeId> topological_sort(const DynamicGraph& g) {
         const size_t n = g.num_nodes();
         std::vector<uint32_t> in_degree(n, 0);
 
         for (size_t u = 0; u < n; ++u) {
-            for (const auto& edge : g.out_edges(static_cast<core::NodeId>(u))) {
+            for (const auto& edge : g.out_edges(static_cast<NodeId>(u))) {
                 if (edge.target < n) {
                     in_degree[edge.target]++;
                 }
             }
         }
 
-        std::queue<core::NodeId> q;
+        std::queue<NodeId> q;
         for (size_t i = 0; i < n; ++i) {
             if (in_degree[i] == 0) {
-                q.push(static_cast<core::NodeId>(i));
+                q.push(static_cast<NodeId>(i));
             }
         }
 
-        std::vector<core::NodeId> order;
+        std::vector<NodeId> order;
         order.reserve(n);
 
         while (!q.empty()) {
-            core::NodeId u = q.front();
+            NodeId u = q.front();
             q.pop();
             order.push_back(u);
 
@@ -121,7 +110,7 @@ public:
         }
 
         if (order.size() != n) {
-            return {}; // Graph has cycles
+            return {}; // Cycle detected
         }
         return order;
     }

@@ -4,11 +4,12 @@
 #include <cassert>
 
 using namespace std;
-using namespace graphflow;
+using namespace graphflow::core;
+using namespace graphflow::graph;
+using namespace graphflow::algorithms;
 
 void test_classic_max_flow() {
-    // 6-node classic flow network
-    graph::DynamicGraph g(6, true);
+    DynamicGraph g(6, true);
     g.add_flow_edge(0, 1, 16);
     g.add_flow_edge(0, 2, 13);
     g.add_flow_edge(1, 2, 10);
@@ -20,10 +21,9 @@ void test_classic_max_flow() {
     g.add_flow_edge(4, 3, 7);
     g.add_flow_edge(4, 5, 4);
 
-    auto dinic_res = algorithms::MaxFlow::dinic(g, 0, 5);
-    auto hlpp_res = algorithms::MaxFlow::push_relabel_hlpp(g, 0, 5);
+    auto dinic_res = MaxFlow::dinic(g, 0, 5);
+    auto hlpp_res = MaxFlow::push_relabel_hlpp(g, 0, 5);
 
-    // Expected maximum flow = 23
     assert(dinic_res.max_flow == 23);
     assert(hlpp_res.max_flow == 23);
 
@@ -38,15 +38,14 @@ void test_classic_max_flow() {
 }
 
 void test_min_cost_flow() {
-    // 4-node flow network with unit costs
-    graph::DynamicGraph g(4, true);
+    DynamicGraph g(4, true);
     g.add_flow_edge(0, 1, 3, 1);
     g.add_flow_edge(0, 2, 2, 2);
     g.add_flow_edge(1, 3, 2, 2);
     g.add_flow_edge(2, 3, 3, 1);
     g.add_flow_edge(1, 2, 1, 1);
 
-    auto mcmf_res = algorithms::MaxFlow::min_cost_max_flow(g, 0, 3);
+    auto mcmf_res = MaxFlow::min_cost_max_flow(g, 0, 3);
     assert(mcmf_res.max_flow == 5);
     assert(mcmf_res.min_cost == 15);
 

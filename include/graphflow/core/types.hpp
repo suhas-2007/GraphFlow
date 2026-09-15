@@ -8,8 +8,6 @@
 
 namespace graphflow::core {
 
-// Fast 32-bit Node ID: saves 50% memory over 64-bit on cache lines
-// and supports graphs up to 4.29 billion nodes.
 using NodeId = uint32_t;
 using EdgeWeight = double;
 using FlowType = int64_t;
@@ -32,7 +30,7 @@ struct FlowEdge {
     FlowType capacity{0};
     FlowType flow{0};
     CostType cost{0};
-    uint32_t rev{0}; // Index of reverse edge in the target's adjacency list
+    uint32_t rev{0};
 
     [[nodiscard]] FlowType residual_capacity() const noexcept {
         return capacity - flow;

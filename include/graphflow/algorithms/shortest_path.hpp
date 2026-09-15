@@ -8,56 +8,41 @@
 
 namespace graphflow::algorithms {
 
+using namespace core;
+using graph::DynamicGraph;
+using graph::BitsetAdjacencyList;
+
 class ShortestPath {
 public:
-    /**
-     * @brief Baseline Dijkstra implementation using std::priority_queue.
-     * Experiences O(E log V) memory growth from duplicate entries.
-     */
-    static core::PathResult dijkstra_std(
-        const graph::DynamicGraph& g,
-        core::NodeId source,
-        core::NodeId target = core::kInvalidNode
+    static PathResult dijkstra_std(
+        const DynamicGraph& g,
+        NodeId source,
+        NodeId target = kInvalidNode
     );
 
-    /**
-     * @brief GraphFlow Accelerated Dijkstra using 4-ary Indexed Min-Heap.
-     * Guarantees strictly <= V entries and in-place decrease_key.
-     */
-    static core::PathResult dijkstra_indexed_4ary(
-        const graph::DynamicGraph& g,
-        core::NodeId source,
-        core::NodeId target = core::kInvalidNode
+    static PathResult dijkstra_indexed_4ary(
+        const DynamicGraph& g,
+        NodeId source,
+        NodeId target = kInvalidNode
     );
 
-    /**
-     * @brief GraphFlow Cache-Optimized Pathfinding across Bitset Adjacency Lists.
-     * Evaluates compact float edges with 4-ary indexed heap (powers 500k+ nodes benchmark).
-     */
-    static core::PathResult dijkstra_bitset(
-        const graph::BitsetAdjacencyList& g,
-        core::NodeId source,
-        core::NodeId target = core::kInvalidNode
+    static PathResult dijkstra_bitset(
+        const BitsetAdjacencyList& g,
+        NodeId source,
+        NodeId target = kInvalidNode
     );
 
-    /**
-     * @brief A* Search Algorithm using 4-ary Indexed Min-Heap and custom heuristic.
-     */
-    static core::PathResult a_star(
-        const graph::DynamicGraph& g,
-        core::NodeId source,
-        core::NodeId target,
-        std::function<core::EdgeWeight(core::NodeId, core::NodeId)> heuristic
+    static PathResult a_star(
+        const DynamicGraph& g,
+        NodeId source,
+        NodeId target,
+        std::function<EdgeWeight(NodeId, NodeId)> heuristic
     );
 
-    /**
-     * @brief Bidirectional Dijkstra: simultaneous forward and backward search.
-     * Significantly reduces searched state space.
-     */
-    static core::PathResult bidirectional_dijkstra(
-        const graph::DynamicGraph& g,
-        core::NodeId source,
-        core::NodeId target
+    static PathResult bidirectional_dijkstra(
+        const DynamicGraph& g,
+        NodeId source,
+        NodeId target
     );
 };
 

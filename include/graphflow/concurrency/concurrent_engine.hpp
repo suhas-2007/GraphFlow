@@ -13,48 +13,38 @@
 
 namespace graphflow::concurrency {
 
+using namespace core;
+using graph::DynamicGraph;
+using graph::BitsetAdjacencyList;
+
 struct QueryPair {
-    core::NodeId source;
-    core::NodeId target;
+    NodeId source;
+    NodeId target;
 };
 
-/**
- * @brief Concurrent Query Engine.
- * Executes batches of path queries and state-space evaluations in parallel.
- * Utilizes ThreadLocalArenaPool to achieve O(1) allocation overhead under high concurrency,
- * eliminating malloc/free lock contention.
- */
+// Parallel batch query dispatcher using thread-local arenas
 class ConcurrentEngine {
 public:
     explicit ConcurrentEngine(size_t num_threads = std::thread::hardware_concurrency())
         : pool_(num_threads) {}
 
-    /**
-     * @brief Dispatches a batch of shortest path queries in parallel across worker threads.
-     */
-    std::vector<core::PathResult> execute_batch_queries(
-        const graph::DynamicGraph& g,
+    std::vector<PathResult> execute_batch_queries(
+        const DynamicGraph& g,
         const std::vector<QueryPair>& queries
     ) {
-        std::vector<std::future<core::PathResult>> futures;
+        std::vector<std::future<PathResult>> futures;
         futures.reserve(queries.size());
 
         for (const auto& q : queries) {
             futures.push_back(pool_.submit([&g, src = q.source, dst = q.target]() {
-                // Thread acquires thread-local arena
-                auto& arena = core::ThreadLocalArenaPool::get_thread_arena();
-
-                // Perform accelerated 4-ary indexed pathfinding
-                core::PathResult res = algorithms::ShortestPath::dijkstra_indexed_4ary(g, src, dst);
-
-                // O(1) bulk reset of thread arena scratchpad
+                auto& arena = ThreadLocalArenaPool::get_thread_arena();
+                PathResult res = algorithms::ShortestPath::dijkstra_indexed_4ary(g, src, dst);
                 arena.reset();
-
                 return res;
             }));
         }
 
-        std::vector<core::PathResult> results;
+        std::vector<PathResult> results;
         results.reserve(queries.size());
         for (auto& f : futures) {
             results.push_back(f.get());
@@ -63,26 +53,23 @@ public:
         return results;
     }
 
-    /**
-     * @brief Dispatches batch queries over BitsetAdjacencyList.
-     */
-    std::vector<core::PathResult> execute_batch_bitset_queries(
-        const graph::BitsetAdjacencyList& g,
+    std::vector<PathResult> execute_batch_bitset_queries(
+        const BitsetAdjacencyList& g,
         const std::vector<QueryPair>& queries
     ) {
-        std::vector<std::future<core::PathResult>> futures;
+        std::vector<std::future<PathResult>> futures;
         futures.reserve(queries.size());
 
         for (const auto& q : queries) {
             futures.push_back(pool_.submit([&g, src = q.source, dst = q.target]() {
-                auto& arena = core::ThreadLocalArenaPool::get_thread_arena();
-                core::PathResult res = algorithms::ShortestPath::dijkstra_bitset(g, src, dst);
+                auto& arena = ThreadLocalArenaPool::get_thread_arena();
+                PathResult res = algorithms::ShortestPath::dijkstra_bitset(g, src, dst);
                 arena.reset();
                 return res;
             }));
         }
 
-        std::vector<core::PathResult> results;
+        std::vector<PathResult> results;
         results.reserve(queries.size());
         for (auto& f : futures) {
             results.push_back(f.get());

@@ -11,11 +11,7 @@
 
 namespace graphflow::core {
 
-/**
- * @brief Cache-aligned Monotonic Bump Arena Allocator.
- * Delivers O(1) allocations with zero internal fragmentation and O(1) bulk reset.
- * Avoids malloc/free lock contention under high-frequency query workloads.
- */
+// Monotonic bump arena allocator with 64-byte alignment and O(1) bulk reset.
 class ArenaAllocator {
 public:
     static constexpr size_t kDefaultBlockSize = 2 * 1024 * 1024; // 2 MB blocks

@@ -11,16 +11,8 @@
 
 namespace graphflow::core {
 
-/**
- * @brief High-Performance 4-ary (d-ary) Indexed Min-Heap with Hole-Bubbling.
- *
- * Optimizations:
- * 1. 4-ary branching cuts tree depth by 50% vs binary heaps, fetching 4 sibling entries
- *    into a single contiguous L1 cache line.
- * 2. 32-bit uint32_t pos_in_heap_ cuts memory and cache pressure by 50%.
- * 3. Hole-bubbling in sift_up and sift_down eliminates unnecessary entry swaps.
- * 4. In-place decrease_key in O(log_4 N), eliminating redundant duplicate pushes.
- */
+// d-ary indexed min-heap (defaults to 4-ary for cache line locality).
+// Maintains key positions for O(log_d N) in-place decrease-key.
 template <typename Key = NodeId, typename Priority = EdgeWeight, size_t D = 4>
 requires (D >= 2)
 class IndexedDaryHeap {

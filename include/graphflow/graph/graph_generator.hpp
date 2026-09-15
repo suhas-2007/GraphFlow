@@ -3,18 +3,21 @@
 #include <cstdint>
 #include <cstddef>
 #include <random>
+#include "graphflow/core/types.hpp"
 #include "graphflow/graph/graph.hpp"
 #include "graphflow/graph/bitset_adj_list.hpp"
 
 namespace graphflow::graph {
+
+using namespace core;
 
 class GraphGenerator {
 public:
     static DynamicGraph generate_random_graph(
         size_t num_nodes,
         size_t num_edges,
-        core::EdgeWeight min_weight = 1.0,
-        core::EdgeWeight max_weight = 100.0,
+        EdgeWeight min_weight = 1.0,
+        EdgeWeight max_weight = 100.0,
         bool directed = true,
         uint64_t seed = 42
     );
@@ -22,30 +25,26 @@ public:
     static DynamicGraph generate_grid_graph(
         size_t width,
         size_t height,
-        core::EdgeWeight min_weight = 1.0,
-        core::EdgeWeight max_weight = 10.0,
+        EdgeWeight min_weight = 1.0,
+        EdgeWeight max_weight = 10.0,
         uint64_t seed = 42
     );
 
     static DynamicGraph generate_dag(
         size_t num_nodes,
         double edge_prob = 0.05,
-        core::EdgeWeight min_weight = 1.0,
-        core::EdgeWeight max_weight = 50.0,
+        EdgeWeight min_weight = 1.0,
+        EdgeWeight max_weight = 50.0,
         uint64_t seed = 42
     );
 
     static DynamicGraph generate_flow_network(
         size_t num_layers,
         size_t nodes_per_layer,
-        core::FlowType max_capacity = 100,
+        FlowType max_capacity = 100,
         uint64_t seed = 42
     );
 
-    /**
-     * @brief Generates a massive benchmark graph directly into BitsetAdjacencyList
-     * with optimal cache alignment and minimal memory overhead (500,000+ nodes).
-     */
     static BitsetAdjacencyList generate_benchmark_bitset_graph(
         size_t num_nodes,
         size_t avg_degree,

@@ -5,10 +5,12 @@
 #include <optional>
 
 using namespace std;
+using namespace graphflow::core;
+using namespace graphflow::graph;
 
 namespace graphflow::algorithms {
 
-optional<CriticalPathResult> DynamicProgramming::critical_path_method(const graph::DynamicGraph& dag) {
+optional<CriticalPathResult> DynamicProgramming::critical_path_method(const DynamicGraph& dag) {
     const size_t n = dag.num_nodes();
     if (n == 0) return nullopt;
 
@@ -17,13 +19,12 @@ optional<CriticalPathResult> DynamicProgramming::critical_path_method(const grap
         return nullopt; // Cycle detected; CPM requires a DAG
     }
 
-    vector<core::EdgeWeight> earliest(n, 0.0);
-    vector<core::NodeId> parent(n, core::kInvalidNode);
+    vector<EdgeWeight> earliest(n, 0.0);
+    vector<NodeId> parent(n, kInvalidNode);
 
-    // Forward pass: earliest start times
-    for (core::NodeId u : topo_order) {
+    for (NodeId u : topo_order) {
         for (const auto& edge : dag.out_edges(u)) {
-            core::NodeId v = edge.target;
+            NodeId v = edge.target;
             if (earliest[u] + edge.weight > earliest[v]) {
                 earliest[v] = earliest[u] + edge.weight;
                 parent[v] = u;
@@ -31,35 +32,31 @@ optional<CriticalPathResult> DynamicProgramming::critical_path_method(const grap
         }
     }
 
-    // Identify completion milestone
-    core::NodeId max_node = 0;
-    core::EdgeWeight max_dist = 0.0;
+    NodeId max_node = 0;
+    EdgeWeight max_dist = 0.0;
     for (size_t i = 0; i < n; ++i) {
         if (earliest[i] > max_dist) {
             max_dist = earliest[i];
-            max_node = static_cast<core::NodeId>(i);
+            max_node = static_cast<NodeId>(i);
         }
     }
 
-    // Backward pass: latest start times
-    vector<core::EdgeWeight> latest(n, max_dist);
+    vector<EdgeWeight> latest(n, max_dist);
     for (auto it = topo_order.rbegin(); it != topo_order.rend(); ++it) {
-        core::NodeId u = *it;
+        NodeId u = *it;
         for (const auto& edge : dag.out_edges(u)) {
-            core::NodeId v = edge.target;
+            NodeId v = edge.target;
             latest[u] = min(latest[u], latest[v] - edge.weight);
         }
     }
 
-    // Total float / slack
-    vector<core::EdgeWeight> slack(n, 0.0);
+    vector<EdgeWeight> slack(n, 0.0);
     for (size_t i = 0; i < n; ++i) {
         slack[i] = max(0.0, latest[i] - earliest[i]);
     }
 
-    // Backtrack critical chain
-    vector<core::NodeId> crit_path;
-    for (core::NodeId cur = max_node; cur != core::kInvalidNode; cur = parent[cur]) {
+    vector<NodeId> crit_path;
+    for (NodeId cur = max_node; cur != kInvalidNode; cur = parent[cur]) {
         crit_path.push_back(cur);
     }
     reverse(crit_path.begin(), crit_path.end());
@@ -74,9 +71,9 @@ optional<CriticalPathResult> DynamicProgramming::critical_path_method(const grap
 }
 
 uint64_t DynamicProgramming::count_paths_dag(
-    const graph::DynamicGraph& dag,
-    core::NodeId source,
-    core::NodeId target
+    const DynamicGraph& dag,
+    NodeId source,
+    NodeId target
 ) {
     const size_t n = dag.num_nodes();
     if (source >= n || target >= n) return 0;
@@ -87,7 +84,7 @@ uint64_t DynamicProgramming::count_paths_dag(
     vector<uint64_t> dp(n, 0);
     dp[source] = 1;
 
-    for (core::NodeId u : topo_order) {
+    for (NodeId u : topo_order) {
         if (dp[u] == 0) continue;
         for (const auto& edge : dag.out_edges(u)) {
             dp[edge.target] += dp[u];
@@ -98,73 +95,72 @@ uint64_t DynamicProgramming::count_paths_dag(
 }
 
 TspResult DynamicProgramming::solve_tsp_bitmask(
-    const graph::DynamicGraph& g,
-    core::NodeId start_node
+    const DynamicGraph& g,
+    NodeId start_node
 ) {
     const size_t n = g.num_nodes();
     if (n == 0 || n > 24) {
-        return {.min_cost = core::kInfinityWeight, .tour = {}};
+        return {.min_cost = kInfinityWeight, .tour = {}};
     }
     if (n == 1) {
         return {.min_cost = 0.0, .tour = {start_node}};
     }
 
     const uint32_t num_states = 1 << n;
-    vector<vector<core::EdgeWeight>> dp(num_states, vector<core::EdgeWeight>(n, core::kInfinityWeight));
-    vector<vector<core::NodeId>> parent(num_states, vector<core::NodeId>(n, core::kInvalidNode));
+    vector<vector<EdgeWeight>> dp(num_states, vector<EdgeWeight>(n, kInfinityWeight));
+    vector<vector<NodeId>> parent(num_states, vector<NodeId>(n, kInvalidNode));
 
     dp[1 << start_node][start_node] = 0.0;
 
     for (uint32_t mask = 1; mask < num_states; ++mask) {
         for (size_t u = 0; u < n; ++u) {
             if (!(mask & (1 << u))) continue;
-            if (dp[mask][u] >= core::kInfinityWeight) continue;
+            if (dp[mask][u] >= kInfinityWeight) continue;
 
-            for (const auto& edge : g.out_edges(static_cast<core::NodeId>(u))) {
-                core::NodeId v = edge.target;
+            for (const auto& edge : g.out_edges(static_cast<NodeId>(u))) {
+                NodeId v = edge.target;
                 if (mask & (1 << v)) continue;
 
                 uint32_t next_mask = mask | (1 << v);
-                core::EdgeWeight next_cost = dp[mask][u] + edge.weight;
+                EdgeWeight next_cost = dp[mask][u] + edge.weight;
                 if (next_cost < dp[next_mask][v]) {
                     dp[next_mask][v] = next_cost;
-                    parent[next_mask][v] = static_cast<core::NodeId>(u);
+                    parent[next_mask][v] = static_cast<NodeId>(u);
                 }
             }
         }
     }
 
-    // Connect tour back to start_node
     uint32_t final_mask = num_states - 1;
-    core::EdgeWeight best_cost = core::kInfinityWeight;
-    core::NodeId best_last = core::kInvalidNode;
+    EdgeWeight best_cost = kInfinityWeight;
+    NodeId best_last = kInvalidNode;
 
     for (size_t u = 0; u < n; ++u) {
-        if (dp[final_mask][u] < core::kInfinityWeight) {
-            for (const auto& edge : g.out_edges(static_cast<core::NodeId>(u))) {
+        if (dp[final_mask][u] < kInfinityWeight) {
+            for (const auto& edge : g.out_edges(static_cast<NodeId>(u))) {
                 if (edge.target == start_node) {
-                    core::EdgeWeight total = dp[final_mask][u] + edge.weight;
+                    EdgeWeight total = dp[final_mask][u] + edge.weight;
                     if (total < best_cost) {
                         best_cost = total;
-                        best_last = static_cast<core::NodeId>(u);
+                        best_last = static_cast<NodeId>(u);
                     }
                 }
             }
         }
     }
 
-    if (best_last == core::kInvalidNode) {
-        return {.min_cost = core::kInfinityWeight, .tour = {}};
+    if (best_last == kInvalidNode) {
+        return {.min_cost = kInfinityWeight, .tour = {}};
     }
 
-    vector<core::NodeId> tour;
+    vector<NodeId> tour;
     tour.push_back(start_node);
     uint32_t cur_mask = final_mask;
-    core::NodeId cur_u = best_last;
+    NodeId cur_u = best_last;
 
-    while (cur_u != start_node && cur_u != core::kInvalidNode) {
+    while (cur_u != start_node && cur_u != kInvalidNode) {
         tour.push_back(cur_u);
-        core::NodeId p = parent[cur_mask][cur_u];
+        NodeId p = parent[cur_mask][cur_u];
         cur_mask ^= (1 << cur_u);
         cur_u = p;
     }
@@ -174,26 +170,26 @@ TspResult DynamicProgramming::solve_tsp_bitmask(
     return {.min_cost = best_cost, .tour = move(tour)};
 }
 
-core::PathResult DynamicProgramming::constrained_shortest_path(
-    const graph::DynamicGraph& g,
+PathResult DynamicProgramming::constrained_shortest_path(
+    const DynamicGraph& g,
     const vector<vector<uint32_t>>& edge_resource_costs,
-    core::NodeId source,
-    core::NodeId target,
+    NodeId source,
+    NodeId target,
     uint32_t max_resource
 ) {
     const size_t n = g.num_nodes();
     if (source >= n || target >= n) {
-        return {.distance = core::kInfinityWeight};
+        return {.distance = kInfinityWeight};
     }
 
-    vector<vector<core::EdgeWeight>> dp(n, vector<core::EdgeWeight>(max_resource + 1, core::kInfinityWeight));
-    vector<vector<pair<core::NodeId, uint32_t>>> parent(
-        n, vector<pair<core::NodeId, uint32_t>>(max_resource + 1, {core::kInvalidNode, 0})
+    vector<vector<EdgeWeight>> dp(n, vector<EdgeWeight>(max_resource + 1, kInfinityWeight));
+    vector<vector<pair<NodeId, uint32_t>>> parent(
+        n, vector<pair<NodeId, uint32_t>>(max_resource + 1, {kInvalidNode, 0})
     );
 
     struct State {
-        core::EdgeWeight dist;
-        core::NodeId node;
+        EdgeWeight dist;
+        NodeId node;
         uint32_t resource;
         bool operator>(const State& o) const { return dist > o.dist; }
     };
@@ -213,11 +209,11 @@ core::PathResult DynamicProgramming::constrained_shortest_path(
         visited_states++;
 
         if (u == target) {
-            vector<core::NodeId> path;
-            core::NodeId cur_node = target;
+            vector<NodeId> path;
+            NodeId cur_node = target;
             uint32_t cur_r = r;
 
-            while (cur_node != core::kInvalidNode) {
+            while (cur_node != kInvalidNode) {
                 path.push_back(cur_node);
                 if (cur_node == source && cur_r == 0) break;
                 auto [p_node, p_r] = parent[cur_node][cur_r];
@@ -242,7 +238,7 @@ core::PathResult DynamicProgramming::constrained_shortest_path(
             uint32_t next_r = r + res_cost;
 
             if (next_r <= max_resource) {
-                core::EdgeWeight next_dist = d + edge.weight;
+                EdgeWeight next_dist = d + edge.weight;
                 if (next_dist < dp[edge.target][next_r]) {
                     dp[edge.target][next_r] = next_dist;
                     parent[edge.target][next_r] = {u, r};
@@ -252,7 +248,7 @@ core::PathResult DynamicProgramming::constrained_shortest_path(
         }
     }
 
-    return {.distance = core::kInfinityWeight, .nodes_visited = visited_states};
+    return {.distance = kInfinityWeight, .nodes_visited = visited_states};
 }
 
 } // namespace graphflow::algorithms
