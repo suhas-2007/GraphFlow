@@ -4,6 +4,7 @@
 #include <vector>
 #include <thread>
 
+using namespace std;
 using namespace graphflow::core;
 
 void test_basic_allocation() {
@@ -30,16 +31,15 @@ void test_basic_allocation() {
     arena.reset();
     assert(arena.total_allocated() == 0);
 
-    // Can allocate again after reset
     void* p3 = arena.allocate(128, 64);
     assert(p3 != nullptr);
-    std::cout << "[PASS] test_basic_allocation\n";
+    cout << "test_basic_allocation passed\n";
 }
 
 void test_stl_adaptor() {
     ArenaAllocator arena(1024 * 1024);
     {
-        std::vector<int, ArenaStlAllocator<int>> vec((ArenaStlAllocator<int>(arena)));
+        vector<int, ArenaStlAllocator<int>> vec((ArenaStlAllocator<int>(arena)));
         for (int i = 0; i < 1000; ++i) {
             vec.push_back(i);
         }
@@ -49,12 +49,12 @@ void test_stl_adaptor() {
         }
     }
     arena.reset();
-    std::cout << "[PASS] test_stl_adaptor\n";
+    cout << "test_stl_adaptor passed\n";
 }
 
 void test_concurrent_arenas() {
     constexpr int num_threads = 4;
-    std::vector<std::thread> threads;
+    vector<thread> threads;
 
     for (int t = 0; t < num_threads; ++t) {
         threads.emplace_back([t]() {
@@ -69,14 +69,12 @@ void test_concurrent_arenas() {
     }
 
     for (auto& th : threads) th.join();
-    std::cout << "[PASS] test_concurrent_arenas\n";
+    cout << "test_concurrent_arenas passed\n";
 }
 
 int main() {
-    std::cout << "--- Running Arena Allocator Tests ---\n";
     test_basic_allocation();
     test_stl_adaptor();
     test_concurrent_arenas();
-    std::cout << "All Arena Allocator tests PASSED!\n";
     return 0;
 }

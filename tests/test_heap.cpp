@@ -4,7 +4,9 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <cmath>
 
+using namespace std;
 using namespace graphflow::core;
 
 void test_heap_basic() {
@@ -37,7 +39,7 @@ void test_heap_basic() {
     assert(e4.key == 3);
 
     assert(heap.empty());
-    std::cout << "[PASS] test_heap_basic\n";
+    cout << "test_heap_basic passed\n";
 }
 
 void test_decrease_key() {
@@ -48,12 +50,12 @@ void test_decrease_key() {
 
     assert(heap.top().key == 2);
 
-    // Decrease key of node 1 from 50 to 10 -> should become the new root
+    // Decrease key of node 1 from 50 to 10 -> becomes new root
     heap.push_or_decrease_key(1, 10.0);
     assert(heap.top().key == 1);
     assert(heap.top().priority == 10.0);
 
-    // Further decrease node 3 to 5.0 -> should become new root
+    // Decrease node 3 to 5.0 -> becomes new root
     heap.push_or_decrease_key(3, 5.0);
     assert(heap.top().key == 3);
     assert(heap.top().priority == 5.0);
@@ -68,39 +70,37 @@ void test_decrease_key() {
     top = heap.pop();
     assert(top.key == 2);
 
-    std::cout << "[PASS] test_decrease_key\n";
+    cout << "test_decrease_key passed\n";
 }
 
 void test_random_sorted_extract() {
     constexpr size_t N = 1000;
     IndexedDaryHeap<NodeId, double, 4> heap(N);
 
-    std::mt19937 rng(1337);
-    std::uniform_real_distribution<double> dist(0.0, 10000.0);
+    mt19937 rng(1337);
+    uniform_real_distribution<double> dist(0.0, 10000.0);
 
-    std::vector<double> vals;
+    vector<double> vals;
     for (size_t i = 0; i < N; ++i) {
         double v = dist(rng);
         vals.push_back(v);
         heap.push(static_cast<NodeId>(i), v);
     }
 
-    std::sort(vals.begin(), vals.end());
+    sort(vals.begin(), vals.end());
 
     for (size_t i = 0; i < N; ++i) {
         auto entry = heap.pop();
-        assert(std::abs(entry.priority - vals[i]) < 1e-9);
+        assert(abs(entry.priority - vals[i]) < 1e-9);
     }
 
     assert(heap.empty());
-    std::cout << "[PASS] test_random_sorted_extract\n";
+    cout << "test_random_sorted_extract passed\n";
 }
 
 int main() {
-    std::cout << "--- Running 4-ary Indexed Min-Heap Tests ---\n";
     test_heap_basic();
     test_decrease_key();
     test_random_sorted_extract();
-    std::cout << "All Heap tests PASSED!\n";
     return 0;
 }

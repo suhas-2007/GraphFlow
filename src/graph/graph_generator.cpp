@@ -2,6 +2,8 @@
 #include <random>
 #include <algorithm>
 
+using namespace std;
+
 namespace graphflow::graph {
 
 DynamicGraph GraphGenerator::generate_random_graph(
@@ -15,13 +17,13 @@ DynamicGraph GraphGenerator::generate_random_graph(
     DynamicGraph g(num_nodes, directed);
     if (num_nodes <= 1) return g;
 
-    std::mt19937_64 rng(seed);
-    std::uniform_int_distribution<core::NodeId> node_dist(0, static_cast<core::NodeId>(num_nodes - 1));
-    std::uniform_real_distribution<core::EdgeWeight> weight_dist(min_weight, max_weight);
+    mt19937_64 rng(seed);
+    uniform_int_distribution<core::NodeId> node_dist(0, static_cast<core::NodeId>(num_nodes - 1));
+    uniform_real_distribution<core::EdgeWeight> weight_dist(min_weight, max_weight);
 
-    // First ensure connectivity by building a random spanning backbone
+    // Build spanning tree backbone to guarantee global connectivity
     for (size_t i = 1; i < num_nodes; ++i) {
-        core::NodeId parent = std::uniform_int_distribution<core::NodeId>(0, static_cast<core::NodeId>(i - 1))(rng);
+        core::NodeId parent = uniform_int_distribution<core::NodeId>(0, static_cast<core::NodeId>(i - 1))(rng);
         g.add_edge(parent, static_cast<core::NodeId>(i), weight_dist(rng));
     }
 
@@ -45,10 +47,10 @@ DynamicGraph GraphGenerator::generate_grid_graph(
     uint64_t seed
 ) {
     size_t total_nodes = width * height;
-    DynamicGraph g(total_nodes, false); // Undirected 2D grid
+    DynamicGraph g(total_nodes, false);
 
-    std::mt19937_64 rng(seed);
-    std::uniform_real_distribution<core::EdgeWeight> weight_dist(min_weight, max_weight);
+    mt19937_64 rng(seed);
+    uniform_real_distribution<core::EdgeWeight> weight_dist(min_weight, max_weight);
 
     for (size_t y = 0; y < height; ++y) {
         for (size_t x = 0; x < width; ++x) {
@@ -75,11 +77,11 @@ DynamicGraph GraphGenerator::generate_dag(
     uint64_t seed
 ) {
     DynamicGraph g(num_nodes, true);
-    std::mt19937_64 rng(seed);
-    std::uniform_real_distribution<double> prob_dist(0.0, 1.0);
-    std::uniform_real_distribution<core::EdgeWeight> weight_dist(min_weight, max_weight);
+    mt19937_64 rng(seed);
+    uniform_real_distribution<double> prob_dist(0.0, 1.0);
+    uniform_real_distribution<core::EdgeWeight> weight_dist(min_weight, max_weight);
 
-    // An edge from u to v only exists if u < v -> strictly acyclic!
+    // Edges strictly from lower to higher indices guarantee DAG property
     for (size_t u = 0; u < num_nodes; ++u) {
         for (size_t v = u + 1; v < num_nodes; ++v) {
             if (prob_dist(rng) < edge_prob) {
@@ -103,22 +105,22 @@ DynamicGraph GraphGenerator::generate_flow_network(
     core::NodeId source = 0;
     core::NodeId sink = static_cast<core::NodeId>(total_nodes - 1);
 
-    std::mt19937_64 rng(seed);
-    std::uniform_int_distribution<core::FlowType> cap_dist(1, max_capacity);
+    mt19937_64 rng(seed);
+    uniform_int_distribution<core::FlowType> cap_dist(1, max_capacity);
 
-    // Connect source to layer 0
+    // Source to first layer
     for (size_t i = 0; i < nodes_per_layer; ++i) {
         core::NodeId u = static_cast<core::NodeId>(1 + i);
         g.add_flow_edge(source, u, cap_dist(rng));
     }
 
-    // Connect intermediate layers
+    // Intermediate layers
     for (size_t layer = 0; layer + 1 < num_layers; ++layer) {
         size_t l1_start = 1 + layer * nodes_per_layer;
         size_t l2_start = 1 + (layer + 1) * nodes_per_layer;
         for (size_t i = 0; i < nodes_per_layer; ++i) {
             for (size_t j = 0; j < nodes_per_layer; ++j) {
-                if (std::uniform_int_distribution<int>(0, 1)(rng)) {
+                if (uniform_int_distribution<int>(0, 1)(rng)) {
                     g.add_flow_edge(
                         static_cast<core::NodeId>(l1_start + i),
                         static_cast<core::NodeId>(l2_start + j),
@@ -129,7 +131,7 @@ DynamicGraph GraphGenerator::generate_flow_network(
         }
     }
 
-    // Connect last layer to sink
+    // Final layer to sink
     size_t last_layer_start = 1 + (num_layers - 1) * nodes_per_layer;
     for (size_t i = 0; i < nodes_per_layer; ++i) {
         core::NodeId u = static_cast<core::NodeId>(last_layer_start + i);
@@ -147,11 +149,11 @@ BitsetAdjacencyList GraphGenerator::generate_benchmark_bitset_graph(
     uint64_t seed
 ) {
     BitsetAdjacencyList g(num_nodes);
-    std::mt19937_64 rng(seed);
-    std::uniform_int_distribution<core::NodeId> node_dist(0, static_cast<core::NodeId>(num_nodes - 1));
-    std::uniform_real_distribution<float> weight_dist(min_weight, max_weight);
+    mt19937_64 rng(seed);
+    uniform_int_distribution<core::NodeId> node_dist(0, static_cast<core::NodeId>(num_nodes - 1));
+    uniform_real_distribution<float> weight_dist(min_weight, max_weight);
 
-    // Guaranteed connected backbone ring + random chord edges
+    // Connected ring backbone + random chords
     for (size_t i = 0; i < num_nodes; ++i) {
         core::NodeId next = static_cast<core::NodeId>((i + 1) % num_nodes);
         g.add_edge(static_cast<core::NodeId>(i), next, weight_dist(rng));

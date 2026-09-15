@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cassert>
 
+using namespace std;
 using namespace graphflow;
 
 void test_dynamic_graph_mutations() {
@@ -17,7 +18,7 @@ void test_dynamic_graph_mutations() {
     assert(g.num_edges() == 4);
     assert(g.has_edge(0, 1));
     assert(g.has_edge(0, 2));
-    assert(!g.has_edge(1, 0)); // Directed
+    assert(!g.has_edge(1, 0));
 
     assert(g.get_edge_weight(0, 1).value() == 10.0);
 
@@ -29,7 +30,7 @@ void test_dynamic_graph_mutations() {
     assert(!g.has_edge(0, 1));
     assert(g.num_edges() == 3);
 
-    std::cout << "[PASS] test_dynamic_graph_mutations\n";
+    cout << "test_dynamic_graph_mutations passed\n";
 }
 
 void test_csr_conversion() {
@@ -51,7 +52,7 @@ void test_csr_conversion() {
     assert(n0.size() == 2);
     assert(n0[0] == 1 && n0[1] == 2);
 
-    std::cout << "[PASS] test_csr_conversion\n";
+    cout << "test_csr_conversion passed\n";
 }
 
 void test_bitset_adjacency() {
@@ -67,18 +68,16 @@ void test_bitset_adjacency() {
     assert(!bg.has_edge(0, 3));
     assert(!bg.has_edge(1, 0));
 
-    // Common neighbors between 0 and 3 are nodes 1 and 2 -> count = 2
+    // Common neighbors between 0 and 3 are 1 and 2
     size_t cn = bg.common_neighbors(0, 3);
     assert(cn == 2);
 
-    std::cout << "[PASS] test_bitset_adjacency\n";
+    cout << "test_bitset_adjacency passed\n";
 }
 
 int main() {
-    std::cout << "--- Running Graph Structure Tests ---\n";
     test_dynamic_graph_mutations();
     test_csr_conversion();
     test_bitset_adjacency();
-    std::cout << "All Graph tests PASSED!\n";
     return 0;
 }

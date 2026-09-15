@@ -2,22 +2,25 @@
 #include "graphflow/algorithms/traversal.hpp"
 #include <algorithm>
 #include <queue>
+#include <optional>
+
+using namespace std;
 
 namespace graphflow::algorithms {
 
-std::optional<CriticalPathResult> DynamicProgramming::critical_path_method(const graph::DynamicGraph& dag) {
+optional<CriticalPathResult> DynamicProgramming::critical_path_method(const graph::DynamicGraph& dag) {
     const size_t n = dag.num_nodes();
-    if (n == 0) return std::nullopt;
+    if (n == 0) return nullopt;
 
     auto topo_order = Traversal::topological_sort(dag);
     if (topo_order.empty()) {
-        return std::nullopt; // Not a DAG
+        return nullopt; // Cycle detected; CPM requires a DAG
     }
 
-    std::vector<core::EdgeWeight> earliest(n, 0.0);
-    std::vector<core::NodeId> parent(n, core::kInvalidNode);
+    vector<core::EdgeWeight> earliest(n, 0.0);
+    vector<core::NodeId> parent(n, core::kInvalidNode);
 
-    // Forward pass: Earliest Start Time
+    // Forward pass: earliest start times
     for (core::NodeId u : topo_order) {
         for (const auto& edge : dag.out_edges(u)) {
             core::NodeId v = edge.target;
@@ -28,7 +31,7 @@ std::optional<CriticalPathResult> DynamicProgramming::critical_path_method(const
         }
     }
 
-    // Find sink node with maximum earliest time
+    // Identify completion milestone
     core::NodeId max_node = 0;
     core::EdgeWeight max_dist = 0.0;
     for (size_t i = 0; i < n; ++i) {
@@ -38,35 +41,35 @@ std::optional<CriticalPathResult> DynamicProgramming::critical_path_method(const
         }
     }
 
-    // Backward pass: Latest Start Time
-    std::vector<core::EdgeWeight> latest(n, max_dist);
+    // Backward pass: latest start times
+    vector<core::EdgeWeight> latest(n, max_dist);
     for (auto it = topo_order.rbegin(); it != topo_order.rend(); ++it) {
         core::NodeId u = *it;
         for (const auto& edge : dag.out_edges(u)) {
             core::NodeId v = edge.target;
-            latest[u] = std::min(latest[u], latest[v] - edge.weight);
+            latest[u] = min(latest[u], latest[v] - edge.weight);
         }
     }
 
-    // Slack
-    std::vector<core::EdgeWeight> slack(n, 0.0);
+    // Total float / slack
+    vector<core::EdgeWeight> slack(n, 0.0);
     for (size_t i = 0; i < n; ++i) {
-        slack[i] = std::max(0.0, latest[i] - earliest[i]);
+        slack[i] = max(0.0, latest[i] - earliest[i]);
     }
 
-    // Trace critical path
-    std::vector<core::NodeId> crit_path;
+    // Backtrack critical chain
+    vector<core::NodeId> crit_path;
     for (core::NodeId cur = max_node; cur != core::kInvalidNode; cur = parent[cur]) {
         crit_path.push_back(cur);
     }
-    std::reverse(crit_path.begin(), crit_path.end());
+    reverse(crit_path.begin(), crit_path.end());
 
     return CriticalPathResult{
         .critical_path_length = max_dist,
-        .critical_path = std::move(crit_path),
-        .earliest_start = std::move(earliest),
-        .latest_start = std::move(latest),
-        .slack = std::move(slack)
+        .critical_path = move(crit_path),
+        .earliest_start = move(earliest),
+        .latest_start = move(latest),
+        .slack = move(slack)
     };
 }
 
@@ -81,7 +84,7 @@ uint64_t DynamicProgramming::count_paths_dag(
     auto topo_order = Traversal::topological_sort(dag);
     if (topo_order.empty()) return 0;
 
-    std::vector<uint64_t> dp(n, 0);
+    vector<uint64_t> dp(n, 0);
     dp[source] = 1;
 
     for (core::NodeId u : topo_order) {
@@ -100,7 +103,6 @@ TspResult DynamicProgramming::solve_tsp_bitmask(
 ) {
     const size_t n = g.num_nodes();
     if (n == 0 || n > 24) {
-        // Exceeds bitmask state space limit
         return {.min_cost = core::kInfinityWeight, .tour = {}};
     }
     if (n == 1) {
@@ -108,9 +110,8 @@ TspResult DynamicProgramming::solve_tsp_bitmask(
     }
 
     const uint32_t num_states = 1 << n;
-    // dp[mask][u]: min cost to visit states in mask ending at u
-    std::vector<std::vector<core::EdgeWeight>> dp(num_states, std::vector<core::EdgeWeight>(n, core::kInfinityWeight));
-    std::vector<std::vector<core::NodeId>> parent(num_states, std::vector<core::NodeId>(n, core::kInvalidNode));
+    vector<vector<core::EdgeWeight>> dp(num_states, vector<core::EdgeWeight>(n, core::kInfinityWeight));
+    vector<vector<core::NodeId>> parent(num_states, vector<core::NodeId>(n, core::kInvalidNode));
 
     dp[1 << start_node][start_node] = 0.0;
 
@@ -121,7 +122,7 @@ TspResult DynamicProgramming::solve_tsp_bitmask(
 
             for (const auto& edge : g.out_edges(static_cast<core::NodeId>(u))) {
                 core::NodeId v = edge.target;
-                if (mask & (1 << v)) continue; // Already visited
+                if (mask & (1 << v)) continue;
 
                 uint32_t next_mask = mask | (1 << v);
                 core::EdgeWeight next_cost = dp[mask][u] + edge.weight;
@@ -133,7 +134,7 @@ TspResult DynamicProgramming::solve_tsp_bitmask(
         }
     }
 
-    // Find minimum cost to return to start_node
+    // Connect tour back to start_node
     uint32_t final_mask = num_states - 1;
     core::EdgeWeight best_cost = core::kInfinityWeight;
     core::NodeId best_last = core::kInvalidNode;
@@ -156,8 +157,7 @@ TspResult DynamicProgramming::solve_tsp_bitmask(
         return {.min_cost = core::kInfinityWeight, .tour = {}};
     }
 
-    // Reconstruct tour
-    std::vector<core::NodeId> tour;
+    vector<core::NodeId> tour;
     tour.push_back(start_node);
     uint32_t cur_mask = final_mask;
     core::NodeId cur_u = best_last;
@@ -169,14 +169,14 @@ TspResult DynamicProgramming::solve_tsp_bitmask(
         cur_u = p;
     }
     tour.push_back(start_node);
-    std::reverse(tour.begin(), tour.end());
+    reverse(tour.begin(), tour.end());
 
-    return {.min_cost = best_cost, .tour = std::move(tour)};
+    return {.min_cost = best_cost, .tour = move(tour)};
 }
 
 core::PathResult DynamicProgramming::constrained_shortest_path(
     const graph::DynamicGraph& g,
-    const std::vector<std::vector<uint32_t>>& edge_resource_costs,
+    const vector<vector<uint32_t>>& edge_resource_costs,
     core::NodeId source,
     core::NodeId target,
     uint32_t max_resource
@@ -186,13 +186,11 @@ core::PathResult DynamicProgramming::constrained_shortest_path(
         return {.distance = core::kInfinityWeight};
     }
 
-    // dp[u][r]: min distance to reach node u with accumulated resource r
-    std::vector<std::vector<core::EdgeWeight>> dp(n, std::vector<core::EdgeWeight>(max_resource + 1, core::kInfinityWeight));
-    std::vector<std::vector<std::pair<core::NodeId, uint32_t>>> parent(
-        n, std::vector<std::pair<core::NodeId, uint32_t>>(max_resource + 1, {core::kInvalidNode, 0})
+    vector<vector<core::EdgeWeight>> dp(n, vector<core::EdgeWeight>(max_resource + 1, core::kInfinityWeight));
+    vector<vector<pair<core::NodeId, uint32_t>>> parent(
+        n, vector<pair<core::NodeId, uint32_t>>(max_resource + 1, {core::kInvalidNode, 0})
     );
 
-    // Min-priority queue ordered by distance: <distance, node, resource>
     struct State {
         core::EdgeWeight dist;
         core::NodeId node;
@@ -200,7 +198,7 @@ core::PathResult DynamicProgramming::constrained_shortest_path(
         bool operator>(const State& o) const { return dist > o.dist; }
     };
 
-    std::priority_queue<State, std::vector<State>, std::greater<State>> pq;
+    priority_queue<State, vector<State>, greater<State>> pq;
 
     dp[source][0] = 0.0;
     pq.push({0.0, source, 0});
@@ -215,8 +213,7 @@ core::PathResult DynamicProgramming::constrained_shortest_path(
         visited_states++;
 
         if (u == target) {
-            // Reconstruct path
-            std::vector<core::NodeId> path;
+            vector<core::NodeId> path;
             core::NodeId cur_node = target;
             uint32_t cur_r = r;
 
@@ -227,11 +224,11 @@ core::PathResult DynamicProgramming::constrained_shortest_path(
                 cur_node = p_node;
                 cur_r = p_r;
             }
-            std::reverse(path.begin(), path.end());
+            reverse(path.begin(), path.end());
 
             return {
                 .distance = d,
-                .path = std::move(path),
+                .path = move(path),
                 .nodes_visited = visited_states,
                 .execution_time_ms = 0.0
             };

@@ -5,6 +5,8 @@
 #include <vector>
 #include <limits>
 
+using namespace std;
+
 namespace graphflow::algorithms {
 
 namespace {
@@ -13,10 +15,10 @@ bool dinic_bfs(
     graph::DynamicGraph& g,
     core::NodeId source,
     core::NodeId sink,
-    std::vector<int>& level
+    vector<int>& level
 ) {
-    std::fill(level.begin(), level.end(), -1);
-    std::queue<core::NodeId> q;
+    fill(level.begin(), level.end(), -1);
+    queue<core::NodeId> q;
 
     level[source] = 0;
     q.push(source);
@@ -41,8 +43,8 @@ core::FlowType dinic_dfs(
     core::NodeId u,
     core::NodeId sink,
     core::FlowType pushed,
-    const std::vector<int>& level,
-    std::vector<size_t>& ptr
+    const vector<int>& level,
+    vector<size_t>& ptr
 ) {
     if (pushed == 0 || u == sink) return pushed;
 
@@ -55,7 +57,7 @@ core::FlowType dinic_dfs(
             continue;
         }
 
-        core::FlowType tr = dinic_dfs(g, v, sink, std::min(pushed, edge.residual_capacity()), level, ptr);
+        core::FlowType tr = dinic_dfs(g, v, sink, min(pushed, edge.residual_capacity()), level, ptr);
         if (tr == 0) continue;
 
         edge.flow += tr;
@@ -73,35 +75,35 @@ core::FlowResult MaxFlow::dinic(
     core::NodeId source,
     core::NodeId sink
 ) {
-    auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time = chrono::high_resolution_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n || sink >= n || source == sink) {
         return {.max_flow = 0};
     }
 
-    // Reset flows on existing edges
+    // Reset flows across all edges
     for (size_t i = 0; i < n; ++i) {
         for (auto& edge : g.flow_edges(static_cast<core::NodeId>(i))) {
             edge.flow = 0;
         }
     }
 
-    std::vector<int> level(n);
-    std::vector<size_t> ptr(n);
+    vector<int> level(n);
+    vector<size_t> ptr(n);
     core::FlowType max_flow = 0;
 
     while (dinic_bfs(g, source, sink, level)) {
-        std::fill(ptr.begin(), ptr.end(), 0);
+        fill(ptr.begin(), ptr.end(), 0);
         while (core::FlowType pushed = dinic_dfs(g, source, sink, core::kInfinityFlow, level, ptr)) {
             max_flow += pushed;
         }
     }
 
-    // Compute min cut (nodes reachable from source in residual network)
-    std::vector<core::NodeId> min_cut;
-    std::vector<bool> visited(n, false);
-    std::queue<core::NodeId> q;
+    // Identify source-side min-cut partition
+    vector<core::NodeId> min_cut;
+    vector<bool> visited(n, false);
+    queue<core::NodeId> q;
     visited[source] = true;
     q.push(source);
 
@@ -118,13 +120,13 @@ core::FlowResult MaxFlow::dinic(
         }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::high_resolution_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     return {
         .max_flow = max_flow,
         .min_cost = 0,
-        .min_cut_source_side = std::move(min_cut),
+        .min_cut_source_side = move(min_cut),
         .execution_time_ms = ms
     };
 }
@@ -134,40 +136,39 @@ core::FlowResult MaxFlow::push_relabel_hlpp(
     core::NodeId source,
     core::NodeId sink
 ) {
-    auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time = chrono::high_resolution_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n || sink >= n || source == sink) {
         return {.max_flow = 0};
     }
 
-    // Reset flows
     for (size_t i = 0; i < n; ++i) {
         for (auto& edge : g.flow_edges(static_cast<core::NodeId>(i))) {
             edge.flow = 0;
         }
     }
 
-    std::vector<core::FlowType> excess(n, 0);
-    std::vector<size_t> height(n, 0);
-    std::vector<size_t> count(2 * n, 0);
-    std::vector<std::vector<core::NodeId>> buckets(2 * n);
+    vector<core::FlowType> excess(n, 0);
+    vector<size_t> height(n, 0);
+    vector<size_t> count(2 * n, 0);
+    vector<vector<core::NodeId>> buckets(2 * n);
     size_t highest_active = 0;
 
     auto push_active = [&](core::NodeId u) {
         if (u != source && u != sink) {
             buckets[height[u]].push_back(u);
-            highest_active = std::max(highest_active, height[u]);
+            highest_active = max(highest_active, height[u]);
         }
     };
 
-    // Global relabeling heuristic: backward BFS from sink and source
+    // Backward BFS from sink to initialize exact distance labels
     auto global_relabel = [&]() {
-        std::fill(height.begin(), height.end(), n);
-        std::fill(count.begin(), count.end(), 0);
+        fill(height.begin(), height.end(), n);
+        fill(count.begin(), count.end(), 0);
         for (auto& b : buckets) b.clear();
 
-        std::queue<core::NodeId> q;
+        queue<core::NodeId> q;
         height[sink] = 0;
         q.push(sink);
 
@@ -176,7 +177,6 @@ core::FlowResult MaxFlow::push_relabel_hlpp(
             q.pop();
 
             for (const auto& edge : g.flow_edges(u)) {
-                // Reverse edge in residual graph: rev edge must have residual capacity > 0
                 const auto& rev_edge = g.flow_edges(edge.to)[edge.rev];
                 if (rev_edge.residual_capacity() > 0 && height[edge.to] == n) {
                     height[edge.to] = height[u] + 1;
@@ -195,7 +195,7 @@ core::FlowResult MaxFlow::push_relabel_hlpp(
         }
     };
 
-    // Initial preflow from source
+    // Saturate source outgoing edges
     height[source] = n;
     excess[source] = core::kInfinityFlow;
     excess[sink] = -core::kInfinityFlow;
@@ -227,13 +227,13 @@ core::FlowResult MaxFlow::push_relabel_hlpp(
         core::NodeId u = buckets[highest_active].back();
         buckets[highest_active].pop_back();
 
-        // Discharge u
+        // Discharge excess from node u
         while (excess[u] > 0) {
             size_t min_h = 2 * n;
             for (auto& edge : g.flow_edges(u)) {
                 if (edge.residual_capacity() > 0) {
                     if (height[u] == height[edge.to] + 1) {
-                        core::FlowType push_amt = std::min(excess[u], edge.residual_capacity());
+                        core::FlowType push_amt = min(excess[u], edge.residual_capacity());
                         edge.flow += push_amt;
                         g.flow_edges(edge.to)[edge.rev].flow -= push_amt;
                         excess[u] -= push_amt;
@@ -244,17 +244,17 @@ core::FlowResult MaxFlow::push_relabel_hlpp(
                         }
                         if (excess[u] == 0) break;
                     } else {
-                        min_h = std::min(min_h, height[edge.to]);
+                        min_h = min(min_h, height[edge.to]);
                     }
                 }
             }
 
             if (excess[u] > 0) {
-                // Relabel u
+                // Relabel node u
                 size_t old_h = height[u];
                 count[old_h]--;
 
-                // Gap heuristic: if count[old_h] becomes 0, nodes above old_h are disconnected from sink
+                // Gap heuristic: empty level isolates all nodes above it
                 if (count[old_h] == 0 && old_h < n) {
                     for (size_t i = 0; i < n; ++i) {
                         if (height[i] > old_h && height[i] < n) {
@@ -277,8 +277,8 @@ core::FlowResult MaxFlow::push_relabel_hlpp(
         }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::high_resolution_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     core::FlowType total_flow = 0;
     for (const auto& edge : g.flow_edges(source)) {
@@ -297,14 +297,13 @@ core::FlowResult MaxFlow::min_cost_max_flow(
     core::NodeId source,
     core::NodeId sink
 ) {
-    auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time = chrono::high_resolution_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n || sink >= n || source == sink) {
         return {.max_flow = 0, .min_cost = 0};
     }
 
-    // Reset flows
     for (size_t i = 0; i < n; ++i) {
         for (auto& edge : g.flow_edges(static_cast<core::NodeId>(i))) {
             edge.flow = 0;
@@ -314,13 +313,13 @@ core::FlowResult MaxFlow::min_cost_max_flow(
     core::FlowType flow = 0;
     core::CostType cost = 0;
 
-    // Successive Shortest Path with SPFA
+    // Successive shortest path with SPFA
     while (true) {
-        std::vector<core::CostType> dist(n, core::kInfinityCost);
-        std::vector<core::NodeId> parent_node(n, core::kInvalidNode);
-        std::vector<size_t> parent_edge_idx(n, 0);
-        std::vector<bool> in_queue(n, false);
-        std::queue<core::NodeId> q;
+        vector<core::CostType> dist(n, core::kInfinityCost);
+        vector<core::NodeId> parent_node(n, core::kInvalidNode);
+        vector<size_t> parent_edge_idx(n, 0);
+        vector<bool> in_queue(n, false);
+        queue<core::NodeId> q;
 
         dist[source] = 0;
         q.push(source);
@@ -348,15 +347,15 @@ core::FlowResult MaxFlow::min_cost_max_flow(
         }
 
         if (dist[sink] == core::kInfinityCost) {
-            break; // No more augmenting paths
+            break; // No augmenting path remains
         }
 
-        // Find bottleneck capacity along the shortest path
+        // Bottleneck capacity along the path
         core::FlowType push_amt = core::kInfinityFlow;
         for (core::NodeId cur = sink; cur != source; cur = parent_node[cur]) {
             core::NodeId p = parent_node[cur];
             size_t edge_idx = parent_edge_idx[cur];
-            push_amt = std::min(push_amt, g.flow_edges(p)[edge_idx].residual_capacity());
+            push_amt = min(push_amt, g.flow_edges(p)[edge_idx].residual_capacity());
         }
 
         // Augment flow
@@ -372,8 +371,8 @@ core::FlowResult MaxFlow::min_cost_max_flow(
         flow += push_amt;
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::high_resolution_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     return {
         .max_flow = flow,

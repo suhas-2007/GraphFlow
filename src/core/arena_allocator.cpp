@@ -2,6 +2,9 @@
 #include <cstdlib>
 #include <algorithm>
 #include <stdexcept>
+#include <new>
+
+using namespace std;
 
 namespace graphflow::core {
 
@@ -16,7 +19,7 @@ ArenaAllocator::Block::Block(size_t cap) : capacity(cap), used(0) {
     memory = static_cast<uint8_t*>(ptr);
 #endif
     if (!memory) {
-        throw std::bad_alloc();
+        throw bad_alloc();
     }
 }
 
@@ -58,7 +61,7 @@ ArenaAllocator::Block& ArenaAllocator::Block::operator=(Block&& other) noexcept 
 }
 
 ArenaAllocator::ArenaAllocator(size_t default_block_size)
-    : default_block_size_(std::max(default_block_size, size_t{4096})) {
+    : default_block_size_(max(default_block_size, size_t{4096})) {
     allocate_new_block(default_block_size_);
 }
 
@@ -69,7 +72,7 @@ ArenaAllocator::ArenaAllocator(ArenaAllocator&& other) noexcept
       current_block_index_(other.current_block_index_),
       total_allocated_(other.total_allocated_),
       total_capacity_(other.total_capacity_),
-      blocks_(std::move(other.blocks_)) {
+      blocks_(move(other.blocks_)) {
     other.current_block_index_ = 0;
     other.total_allocated_ = 0;
     other.total_capacity_ = 0;
@@ -81,7 +84,7 @@ ArenaAllocator& ArenaAllocator::operator=(ArenaAllocator&& other) noexcept {
         current_block_index_ = other.current_block_index_;
         total_allocated_ = other.total_allocated_;
         total_capacity_ = other.total_capacity_;
-        blocks_ = std::move(other.blocks_);
+        blocks_ = move(other.blocks_);
         other.current_block_index_ = 0;
         other.total_allocated_ = 0;
         other.total_capacity_ = 0;
@@ -90,7 +93,7 @@ ArenaAllocator& ArenaAllocator::operator=(ArenaAllocator&& other) noexcept {
 }
 
 void ArenaAllocator::allocate_new_block(size_t min_capacity) {
-    size_t size = std::max(default_block_size_, min_capacity);
+    size_t size = max(default_block_size_, min_capacity);
     blocks_.emplace_back(size);
     total_capacity_ += size;
 }
@@ -98,7 +101,7 @@ void ArenaAllocator::allocate_new_block(size_t min_capacity) {
 void* ArenaAllocator::allocate(size_t bytes, size_t alignment) {
     if (bytes == 0) return nullptr;
 
-    alignment = std::max(alignment, alignof(void*));
+    alignment = max(alignment, alignof(void*));
 
     while (current_block_index_ < blocks_.size()) {
         auto& block = blocks_[current_block_index_];
@@ -112,11 +115,11 @@ void* ArenaAllocator::allocate(size_t bytes, size_t alignment) {
             return reinterpret_cast<void*>(aligned_addr);
         }
 
-        // Advance to next block or create one
+        // Current block doesn't have room, try next
         current_block_index_++;
     }
 
-    // Need a new block capable of holding at least bytes + alignment
+    // Allocate an oversized block for this request
     allocate_new_block(bytes + alignment + default_block_size_);
     current_block_index_ = blocks_.size() - 1;
 
@@ -139,7 +142,7 @@ void ArenaAllocator::reset() noexcept {
 }
 
 ArenaAllocator& ThreadLocalArenaPool::get_thread_arena() {
-    thread_local ArenaAllocator thread_arena(4 * 1024 * 1024); // 4MB default per thread
+    thread_local ArenaAllocator thread_arena(4 * 1024 * 1024); // 4 MB default per thread
     return thread_arena;
 }
 

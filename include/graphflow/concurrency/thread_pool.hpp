@@ -12,9 +12,7 @@
 
 namespace graphflow::concurrency {
 
-/**
- * @brief Lightweight, low-overhead Task-parallel Thread Pool.
- */
+// Fixed-size worker thread pool for query execution.
 class ThreadPool {
 public:
     explicit ThreadPool(size_t threads = std::thread::hardware_concurrency()) {

@@ -3,26 +3,29 @@
 #include <queue>
 #include <chrono>
 #include <algorithm>
+#include <functional>
+
+using namespace std;
 
 namespace graphflow::algorithms {
 
 namespace {
 
-std::vector<core::NodeId> reconstruct_path(
-    const std::vector<core::NodeId>& parent,
+vector<core::NodeId> reconstruct_path(
+    const vector<core::NodeId>& parent,
     core::NodeId source,
     core::NodeId target
 ) {
-    if (target == core::kInvalidNode || parent[target] == core::kInvalidNode && target != source) {
+    if (target == core::kInvalidNode || (parent[target] == core::kInvalidNode && target != source)) {
         return {};
     }
 
-    std::vector<core::NodeId> path;
+    vector<core::NodeId> path;
     for (core::NodeId cur = target; cur != core::kInvalidNode; cur = parent[cur]) {
         path.push_back(cur);
         if (cur == source) break;
     }
-    std::reverse(path.begin(), path.end());
+    reverse(path.begin(), path.end());
     return path;
 }
 
@@ -33,20 +36,19 @@ core::PathResult ShortestPath::dijkstra_std(
     core::NodeId source,
     core::NodeId target
 ) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = chrono::steady_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n) {
         return {.distance = core::kInfinityWeight};
     }
 
-    std::vector<core::EdgeWeight> dist(n, core::kInfinityWeight);
-    std::vector<core::NodeId> parent(n, core::kInvalidNode);
-    std::vector<bool> visited(n, false);
+    vector<core::EdgeWeight> dist(n, core::kInfinityWeight);
+    vector<core::NodeId> parent(n, core::kInvalidNode);
+    vector<bool> visited(n, false);
 
-    // Standard std::priority_queue (stores pairs of <distance, node>)
-    using QueueElement = std::pair<core::EdgeWeight, core::NodeId>;
-    std::priority_queue<QueueElement, std::vector<QueueElement>, std::greater<QueueElement>> pq;
+    using QueueElement = pair<core::EdgeWeight, core::NodeId>;
+    priority_queue<QueueElement, vector<QueueElement>, greater<QueueElement>> pq;
 
     dist[source] = 0.0;
     pq.push({0.0, source});
@@ -69,13 +71,13 @@ core::PathResult ShortestPath::dijkstra_std(
             if (new_dist < dist[v]) {
                 dist[v] = new_dist;
                 parent[v] = u;
-                pq.push({new_dist, v}); // Duplicate push in std::priority_queue
+                pq.push({new_dist, v});
             }
         }
     }
 
-    auto end_time = std::chrono::steady_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::steady_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     core::PathResult res;
     res.distance = (target != core::kInvalidNode && target < n) ? dist[target] : 0.0;
@@ -90,15 +92,15 @@ core::PathResult ShortestPath::dijkstra_indexed_4ary(
     core::NodeId source,
     core::NodeId target
 ) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = chrono::steady_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n) {
         return {.distance = core::kInfinityWeight};
     }
 
-    std::vector<core::EdgeWeight> dist(n, core::kInfinityWeight);
-    std::vector<core::NodeId> parent(n, core::kInvalidNode);
+    vector<core::EdgeWeight> dist(n, core::kInfinityWeight);
+    vector<core::NodeId> parent(n, core::kInvalidNode);
 
     core::IndexedDaryHeap<core::NodeId, core::EdgeWeight, 4> heap(n);
 
@@ -121,14 +123,13 @@ core::PathResult ShortestPath::dijkstra_indexed_4ary(
             if (new_dist < dist[v]) {
                 dist[v] = new_dist;
                 parent[v] = u;
-                // In-place decrease_key with 4-ary tree traversal!
                 heap.push_or_decrease_key(v, new_dist);
             }
         }
     }
 
-    auto end_time = std::chrono::steady_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::steady_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     core::PathResult res;
     res.distance = (target != core::kInvalidNode && target < n) ? dist[target] : 0.0;
@@ -143,15 +144,15 @@ core::PathResult ShortestPath::dijkstra_bitset(
     core::NodeId source,
     core::NodeId target
 ) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = chrono::steady_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n) {
         return {.distance = core::kInfinityWeight};
     }
 
-    std::vector<float> dist(n, static_cast<float>(core::kInfinityWeight));
-    std::vector<core::NodeId> parent(n, core::kInvalidNode);
+    vector<float> dist(n, static_cast<float>(core::kInfinityWeight));
+    vector<core::NodeId> parent(n, core::kInvalidNode);
 
     core::IndexedDaryHeap<core::NodeId, float, 4> heap(n);
 
@@ -179,8 +180,8 @@ core::PathResult ShortestPath::dijkstra_bitset(
         }
     }
 
-    auto end_time = std::chrono::steady_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::steady_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     core::PathResult res;
     res.distance = (target != core::kInvalidNode && target < n) ? dist[target] : 0.0;
@@ -194,17 +195,17 @@ core::PathResult ShortestPath::a_star(
     const graph::DynamicGraph& g,
     core::NodeId source,
     core::NodeId target,
-    std::function<core::EdgeWeight(core::NodeId, core::NodeId)> heuristic
+    function<core::EdgeWeight(core::NodeId, core::NodeId)> heuristic
 ) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = chrono::steady_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n || target >= n) {
         return {.distance = core::kInfinityWeight};
     }
 
-    std::vector<core::EdgeWeight> g_score(n, core::kInfinityWeight);
-    std::vector<core::NodeId> parent(n, core::kInvalidNode);
+    vector<core::EdgeWeight> g_score(n, core::kInfinityWeight);
+    vector<core::NodeId> parent(n, core::kInvalidNode);
 
     core::IndexedDaryHeap<core::NodeId, core::EdgeWeight, 4> open_set(n);
 
@@ -233,8 +234,8 @@ core::PathResult ShortestPath::a_star(
         }
     }
 
-    auto end_time = std::chrono::steady_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::steady_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     core::PathResult res;
     res.distance = g_score[target];
@@ -249,7 +250,7 @@ core::PathResult ShortestPath::bidirectional_dijkstra(
     core::NodeId source,
     core::NodeId target
 ) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = chrono::steady_clock::now();
     const size_t n = g.num_nodes();
 
     if (source >= n || target >= n) {
@@ -259,18 +260,18 @@ core::PathResult ShortestPath::bidirectional_dijkstra(
         return {.distance = 0.0, .path = {source}, .nodes_visited = 1, .execution_time_ms = 0.0};
     }
 
-    std::vector<core::EdgeWeight> dist_f(n, core::kInfinityWeight);
-    std::vector<core::EdgeWeight> dist_b(n, core::kInfinityWeight);
-    std::vector<core::NodeId> parent_f(n, core::kInvalidNode);
-    std::vector<core::NodeId> parent_b(n, core::kInvalidNode);
-    std::vector<bool> visited_f(n, false);
-    std::vector<bool> visited_b(n, false);
+    vector<core::EdgeWeight> dist_f(n, core::kInfinityWeight);
+    vector<core::EdgeWeight> dist_b(n, core::kInfinityWeight);
+    vector<core::NodeId> parent_f(n, core::kInvalidNode);
+    vector<core::NodeId> parent_b(n, core::kInvalidNode);
+    vector<bool> visited_f(n, false);
+    vector<bool> visited_b(n, false);
 
     core::IndexedDaryHeap<core::NodeId, core::EdgeWeight, 4> heap_f(n);
     core::IndexedDaryHeap<core::NodeId, core::EdgeWeight, 4> heap_b(n);
 
-    // Build reverse adjacency for backward search
-    std::vector<std::vector<core::Edge>> rev_adj(n);
+    // Build reverse edge list for backward search
+    vector<vector<core::Edge>> rev_adj(n);
     for (size_t u = 0; u < n; ++u) {
         for (const auto& e : g.out_edges(static_cast<core::NodeId>(u))) {
             rev_adj[e.target].push_back({static_cast<core::NodeId>(u), e.weight});
@@ -288,7 +289,7 @@ core::PathResult ShortestPath::bidirectional_dijkstra(
     uint64_t nodes_visited = 0;
 
     while (!heap_f.empty() && !heap_b.empty()) {
-        // Forward step
+        // Forward expansion
         if (!heap_f.empty()) {
             auto [u_f, d_f] = heap_f.pop();
             visited_f[u_f] = true;
@@ -314,7 +315,7 @@ core::PathResult ShortestPath::bidirectional_dijkstra(
             }
         }
 
-        // Backward step
+        // Backward expansion
         if (!heap_b.empty()) {
             auto [u_b, d_b] = heap_b.pop();
             visited_b[u_b] = true;
@@ -337,8 +338,8 @@ core::PathResult ShortestPath::bidirectional_dijkstra(
         }
     }
 
-    auto end_time = std::chrono::steady_clock::now();
-    double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    auto end_time = chrono::steady_clock::now();
+    double ms = chrono::duration<double, milli>(end_time - start_time).count();
 
     core::PathResult res;
     res.distance = best_dist;
@@ -346,23 +347,23 @@ core::PathResult ShortestPath::bidirectional_dijkstra(
     res.execution_time_ms = ms;
 
     if (meeting_node != core::kInvalidNode) {
-        // Forward portion: source -> meeting_node
-        std::vector<core::NodeId> path_f;
+        // Forward trace: source -> meeting_node
+        vector<core::NodeId> path_f;
         for (core::NodeId cur = meeting_node; cur != core::kInvalidNode; cur = parent_f[cur]) {
             path_f.push_back(cur);
             if (cur == source) break;
         }
-        std::reverse(path_f.begin(), path_f.end());
+        reverse(path_f.begin(), path_f.end());
 
-        // Backward portion: meeting_node -> target
-        std::vector<core::NodeId> path_b;
+        // Backward trace: meeting_node -> target
+        vector<core::NodeId> path_b;
         for (core::NodeId cur = parent_b[meeting_node]; cur != core::kInvalidNode; cur = parent_b[cur]) {
             path_b.push_back(cur);
             if (cur == target) break;
         }
 
         path_f.insert(path_f.end(), path_b.begin(), path_b.end());
-        res.path = std::move(path_f);
+        res.path = move(path_f);
     }
 
     return res;

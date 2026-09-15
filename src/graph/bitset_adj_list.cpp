@@ -1,5 +1,8 @@
 #include "graphflow/graph/bitset_adj_list.hpp"
 #include <bit>
+#include <algorithm>
+
+using namespace std;
 
 namespace graphflow::graph {
 
@@ -17,7 +20,7 @@ void BitsetAdjacencyList::resize(size_t num_nodes) {
 
 void BitsetAdjacencyList::add_edge(core::NodeId u, core::NodeId v, float weight) {
     if (u >= num_nodes_ || v >= num_nodes_) {
-        resize(std::max(u, v) + 1);
+        resize(max(u, v) + 1);
     }
 
     edges_[u].push_back(CompactEdge{.target = v, .weight = weight});
@@ -39,7 +42,7 @@ float BitsetAdjacencyList::get_weight(core::NodeId u, core::NodeId v, float defa
 size_t BitsetAdjacencyList::common_neighbors(core::NodeId u, core::NodeId v) const {
     if (u >= num_nodes_ || v >= num_nodes_) return 0;
 
-    // Fast check: if no bits in common in 64-bit word filter, guaranteed 0 common neighbors!
+    // Fast check: zero overlap in bitmasks means no common neighbors exist
     uint64_t common_mask = bitmask_filters_[u] & bitmask_filters_[v];
     if (common_mask == 0) return 0;
 
